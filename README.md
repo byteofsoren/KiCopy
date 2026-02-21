@@ -1,18 +1,11 @@
 # KiCopy
-Target any zip or directory with zips to add all KiCAD files from that zip/dir to your kicad symbol/fotprint repo.
-
-Install this tool with the install script by using the flags like ether of this:
-
-```BASH
-./install.sh --repo [repo_dir] -i
-./install.sh -r [repo_dir] --install
-```
-
-Where the `repo_dir` is the repo where you want to store the symbols,footprints and 3d files.
+When working with KiCAD it happens that you downloads symbols and footprints from internet and then you need to move each symbol, footprint and 3D files manually from the source directory to where you have your repo.
+This gets quite tedious fast and thus then KiCopy comes to save you.
+By using the KiCopy function you don't even have to unzip the footprints KiCopy just `kicopy -t LIB_THVD151.zip`  and then the files are in your repo
+The install script down below shows how to setup the repo connection.
 
 # Synopis
 ```sh
-
 kicopy -t target.zip
 kicopy -t ~/tmp/componentsdir/
 kicopy --target target.zip
@@ -27,7 +20,6 @@ If the target is a zip file it extracts the following:
 * Symbols
 * 3D files
 And then put them in the in to the repo named in the install.sh --repo.
-
 
 ## How to use:
 KiCopy takes ether a directory or a zip file as a target
@@ -49,3 +41,12 @@ $ kicopy --target ~/tmp/footprints
 ```
 
 
+# Installation
+Install this tool with the install script by using the flags like ether of this:
+
+```BASH
+./install.sh --repo [repo_dir] -i
+./install.sh -r [repo_dir] --install
+```
+
+Where the `repo_dir` is the repo where you want to store the symbols,footprints and 3d files.

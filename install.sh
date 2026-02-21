@@ -5,7 +5,7 @@
 
 # This script updates the REPO path in a target file (assumed to be 'original_script.sh' here).
 # Replace 'original_script.sh' with the actual file path if different.
-TARGET_FILE="./src/test.sh"
+TARGET_FILE="./src/kicopy.sh"
 NEW_PATH=""
 
 set_path_to_repo() {
@@ -41,8 +41,6 @@ set_path_to_repo() {
   echo "Updated REPO path in '$TARGET_FILE' to '$NEW_PATH'."
 
   echo ""
-  echo "Show results"
-  cat ./src/test.sh
 
 }
 

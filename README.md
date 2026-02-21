@@ -1,13 +1,14 @@
 # KiCopy
 Target any zip or directory with zips to add all KiCAD files from that zip/dir to your kicad symbol/fotprint repo.
 
-Install this tool with the install script like this
+Install this tool with the install script by using the flags like ether of this:
 
 ```BASH
-./install.sh --repo [repo_dir] -r [repo_dir]
+./install.sh --repo [repo_dir] -i
+./install.sh -r [repo_dir] --install
 ```
 
-Where the `repo_dir` is the repo where you want to store the symbols,footprints and 3d files. 
+Where the `repo_dir` is the repo where you want to store the symbols,footprints and 3d files.
 
 # Synopis
 ```sh

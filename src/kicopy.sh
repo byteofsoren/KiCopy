@@ -614,8 +614,6 @@ main() {
     # unzip file
     log "Message" "Target is file"
     unzip "$TARGET" -d "$TEMP"
-    #   select_type_menu "$TEMP/LIB_TVS4685463.zipd" "$REPO/TVS diode.pretty"
-    move_to_repo "$TEMP"
 
   elif [[ -d "$TARGET" ]]; then
     # Unzip a directorie of zip files.

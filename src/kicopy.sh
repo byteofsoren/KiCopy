@@ -9,11 +9,8 @@ REPO="$HOME/repos/electricdesign_kilib"
 # ================================================
 # Global do not change
 # ================================================
-TEMP="/tmp/kicad_extract_$$"
-# FOOTPRINTS="$REPO/footprints"
-# SYMBOLS="$REPO/symbols"
-VISUALFILES="$REPO/3d"
-DESIGNBLOCK="$REPO/design_blocks"
+TEMP="/tmp/KiCopy_extract_$$"
+LOGF="/tmp/KiCopy_log_$$.log"
 
 TARGET=""
 CHECKTARGET=False
@@ -115,6 +112,7 @@ show_status_table() {
 #   add_status_row "2" "THVD151.mod" "TVD1512_b.mod" "Changed"
 # ================================================
 add_status_row() {
+  log "Start" "add_status_row()"
   local id="$1"
   local base="$2"
   local target="$3"
@@ -138,10 +136,21 @@ add_status_row() {
 }
 
 # ================================================
+# Log command
+# ================================================
+log() {
+  local time
+  time=$(date --utc +%Y%m%d-T%T:%H:%S)
+  local status="$1"
+  local message="$2"
+  printf "[%s][%s] %s\n" "$time" "$status" "$message" >>$LOGF
+}
+
+# ================================================
 # Target should only be assigned onec.
 # ================================================
 target_assign_once() {
-  echo "Start target_type_check"
+  log "Start" "target_assign_once()"
   if [[ -n $TARGET ]]; then
     echo "ALREADYDONE"
     return $ALREADYDONE
@@ -169,15 +178,19 @@ target_assign_once() {
 #   The return is what to do.
 #
 # How to use:
-#   action=move_to_repo_cehck "$REPO/TVS.pretty" file_name
+#   move_to_repo_cehck "$REPO/TVS.pretty" file_name
+#   action=$?
 # ================================================
 move_to_repo_cehck() {
-  local target_dir=$1
-  local -n base_filename=$2
+  log "Start" "move_to_repo_cehck()"
+  local target_dir="$1"
+  local -n base_filename="$2"
+  log "Message" "$target_dir/$base_filename"
   local returnval="$OK"
   local orginal_fliename="$base_filename"
   # Does the file exist?!
   if [[ -e "$target_dir/$base_filename" ]]; then
+    log "Message" "the path $target_dir/$base_filename existed start renaming"
     while true; do
       # Yes the target haid an file allready!
       echo -e " ${C_RED}File Exists${NO_FORMAT}"
@@ -244,104 +257,15 @@ move_to_repo_cehck() {
       fi
     done
   fi
+
   # Add the row to the output table
   add_status_row "$COUNTER" "$base_filename" "$orginal_fliename" "$returnval"
   # Return with the return val
   return "$returnval"
 }
 
-# ================================================
-# Sort the target
-# ================================================
-sort_target() {
-
-  # Footprints → footprint/ (whole .pretty libraries)
-  echo "Move comelete pretty libraries"
-  while IFS= read -r -d '' file; do
-    # process "$file"
-    # fname is the name of the file excluding the path to the file
-    local fname=""
-    fname=$(basename "$file")
-
-    # Move to repo check checks if there is going to be any conflicts moving the file.
-    # local acction
-    # acction=move_to_repo_cehck "$FOOTPRINTS" fname
-
-    # If CHECKTARGET is false then move the files from source to target dir.
-    if [[ $CHECKTARGET == false ]]; then
-      echo "Move the files to $REPO"
-      # echo "mv $file $FOOTPRINTS/$fname"
-      # mv "$file" "$FOOTPRINTS/$fname"
-    fi
-    ((COUNTER++))
-  done < <(find "$TEMP" \( -type d -name "*.pretty" \) -print0)
-  echo "Moved $COUNTER, files"
-
-  # Any loose footprint files
-  echo "Start footprints any loose:"
-  while IFS= read -r -d '' file; do
-    local fname=""
-    fname=$(basename "$file")
-    # Do the target_conflict here
-    # move_to_repo_cehck "$FOOTPRINTS" fname
-    local acction=$?
-
-    if [[ $CHECKTARGET == False ]]; then
-      # echo "Move the files to $REPO"
-      # echo "mv $file $FOOTPRINTS/$fname"
-      mv "$file" "$FOOTPRINTS/$fname"
-      if ((acction == NOCONFLICTONFILE || acction == OVERWRITEFILE)); then
-        # Move the file to repo
-        printf " OK"
-
-      elif ((acction == IGNOREFILE)); then
-        printf " IG"
-      fi
-    fi
-    ((COUNTER++))
-  done < <(find "$TEMP" \( -name "*.kicad_mod" -o -name "*.mod" \) -print0)
-
-  # Symbols + docs → symbols/
-  echo "Start symbols files"
-  while IFS= read -r -d '' file; do
-    local fname=""
-    fname=$(basename "$file")
-    # Do the target_conflict here
-    # move_to_repo_cehck "$SYMBOLS" fname
-    local acction=$?
-    # process "$file"
-
-    # If check target is False then then move the files in to repo
-    if [[ $CHECKTARGET == False ]]; then
-      echo "Move the files"
-      # echo "mv $file $SYMBOLS/$fname"
-      mv "$file" "$FOOTPRINTS/$fname"
-    fi
-    ((COUNTER++))
-  done < <(find "$TEMP" \( -name "*.kicad_sym" -o -name "*.lib" -o -name "*.dcm" \) -print0)
-
-  # 3D files
-  echo "Start 3d files"
-  while IFS= read -r -d '' file; do
-    local fname=""
-    fname=$(basename "$file")
-    # Do the target_conflict here
-    # move_to_repo_cehck "$VISUALFILES" fname
-    local acction=$?
-    # process "$file"
-
-    # If check target is False then then move the files in to repo
-    if [[ $CHECKTARGET == False ]]; then
-      echo "Move the files"
-      # echo "mv $file $VISUALFILES/$fname"
-      mv "$file" "$FOOTPRINTS/$fname"
-    fi
-    ((COUNTER++))
-  done < <(find "$TEMP" \( -iname "*.wrl" -o -iname "*.step" -o -iname "*.stp" -o -iname "*.idf" -o -iname "*.stl" -o -iname "*.ply" -o -iname "*.glb" -o -iname "*.brep" -o -iname "*.xao" \) -print0)
-
-}
-
 create_new_pretty() {
+  log "Start" "create_new_pretty()"
   newdirname="${REPO}/${1}.pretty"
   while true; do
     if [[ -d "$newdirname" ]]; then
@@ -429,7 +353,7 @@ fzf_side_preview() {
 #    $1 selected string
 # ================================================
 show_menu() {
-  echo "menu"
+  log "Start" "show_menu()"
   local -n selected_pretty=$1
   # Get all pretty libraries in REPO
   local -a pretty_menu_array=()
@@ -488,11 +412,14 @@ show_menu() {
 move_to_repo() {
   local file=$1
   local repo_path=$2
+  log "Start" "move_to_repo() file=$file repo_path=$repo_path"
   local base_filename
   local move_error
   base_filename=$(basename "$file")
+  log "Filename" "base_filename=$base_filename"
   move_to_repo_cehck "$REPO/repo_path" base_filename
   move_error=$?
+
   if [[ "$move_error" == "$ERROR" ]]; then
     return "$ERROR"
   elif [[ "$move_error" == "$IGNOREFILE" ]]; then
@@ -514,6 +441,7 @@ move_to_repo() {
 #   select_type_menu "$TEMP/LIB_TVS4685463.zipd" "$REPO/TVS diode.pretty"
 # ================================================
 select_type_menu() {
+  log "Start" "select_type_menu()"
   local temp_path=$1
   local repo_path=$2
   local what_arr=("All files" "Symbols" "Footprints" "3D files")
@@ -521,12 +449,15 @@ select_type_menu() {
   local all_files=false
   # Sanitace the output
   if [[ ! -d "$repo_path" || ! -d "$temp_path" ]]; then
+    [[ ! -d "$repo_path" ]] && log "ERROR" "Directory: $repo_path did not exist"
+    [[ ! -d "$temp_path" ]] && log "ERROR" "Directory: $temp_path did not exist"
     echo "Path provided did not exists"
     return "$ERROR"
   fi
   # Select ether one in $what_arr.
   while true; do
     while IFS= read -r -d '' item; do
+      log "Info" "item=$item"
       [[ -n "$item" ]] && selected+=("$item")
       [[ "$item" = "All files" ]] && all_files=true && break
     done < <(printf '%s\0' "${what_arr[@]}" | fzf --multi --read0 --print0 --prompt "Select with [Tab] what to include")
@@ -541,6 +472,7 @@ select_type_menu() {
   if $all_files; then
     # Move all files to repo
     while IFS= read -r -d '' file; do
+      log "File" "while file=$file"
       # file="/tmp/xxxx/LIB_TVS4685463.zipd"
       #   $ move_to_repo "/tmp/xxxx/LIB_TVS4685463.zipd/xxxx.kicadx" "$REPO/TVS/."
       local returnopt
@@ -549,6 +481,7 @@ select_type_menu() {
       if [[ "$returnopt" == "$ERROR" ]]; then
         return "$ERROR"
       fi
+      ((COUNTER++))
 
     done < <(find "$temp_path" -type f -iregex \
       '.*\.\(kicad_mod\|mod\|kicad_sym\|lib\|dcm\|wrl\|step\|stp\|idf\|stl\|ply\|glb\|brep\|xao\)$' -print0)
@@ -562,13 +495,40 @@ select_type_menu() {
       fi
       # For each filetype:
       # "Symbols" "Footprints" "3D files"
+      # First Symbols
       if [[ "$select" == "Symbols" ]]; then
         echo ""
+        echo "Start footprints..."
+        while IFS= read -r -d '' file; do
+          local returnopt
+          move_to_repo "$file" "$repo_path/."
+          returnopt=$?
+          if [[ "$returnopt" == "$ERROR" ]]; then
+            return "$ERROR"
+          fi
+          ((COUNTER++))
+        done < <(find "$TEMP" \( -name "*.kicad_sym" -o -name "*.lib" -o -name "*.dcm" \) -print0)
       elif [[ "$select" == "Footprints" ]]; then
-        echo ""
+        # Then footprints
+        while IFS= read -r -d '' file; do
+          local returnopt
+          move_to_repo "$file" "$repo_path/."
+          returnopt=$?
+          if [[ "$returnopt" == "$ERROR" ]]; then
+            return "$ERROR"
+          fi
+          ((COUNTER++))
+        done < <(find "$TEMP" \( -name "*.kicad_mod" -o -name "*.mod" \) -print0)
       elif [[ "$select" == "3D files" ]]; then
-        echo ""
-
+        while IFS= read -r -d '' file; do
+          local returnopt
+          move_to_repo "$file" "$repo_path/."
+          returnopt=$?
+          if [[ "$returnopt" == "$ERROR" ]]; then
+            return "$ERROR"
+          fi
+          ((COUNTER++))
+        done < <(find "$TEMP" \( -iname "*.wrl" -o -iname "*.step" -o -iname "*.stp" -o -iname "*.idf" -o -iname "*.stl" -o -iname "*.ply" -o -iname "*.glb" -o -iname "*.brep" -o -iname "*.xao" \) -print0)
       fi
 
     done
@@ -585,7 +545,7 @@ select_type_menu() {
 #   in $REPO to where the files are going to be placed
 # ================================================
 select_sublib_in_repo() {
-  echo "move to repo with fzf"
+  log "Start" "select_sublib_in_repo()"
   local movetarget
   movetarget="$1"
 
@@ -622,6 +582,7 @@ select_sublib_in_repo() {
 }
 
 show_help() {
+  log "Start" "show_help()"
   echo -e "$C_TURQUOISE KiCopy $NO_FORMAT"
   echo -e "KiCopy helps with adding symbols and footprints to your repo."
   echo -e "Currently the repo is set to$C_TURQUOISE $REPO$NO_FORMAT"
@@ -647,29 +608,32 @@ show_help() {
 # Mani function
 # ================================================
 main() {
-  echo "Main"
+  log "Start" "Main function"
   # Move the footprints/symbols to REPO
   if [[ -f "$TARGET" ]]; then
     # unzip file
+    log "Message" "Target is file"
     unzip "$TARGET" -d "$TEMP"
+    #   select_type_menu "$TEMP/LIB_TVS4685463.zipd" "$REPO/TVS diode.pretty"
     move_to_repo "$TEMP"
 
   elif [[ -d "$TARGET" ]]; then
     # Unzip a directorie of zip files.
     #
+    log "Message" "Target is a directory"
     while IFS= read -r -d '' zipfile; do
-      echo "Unziping $zipfile"
+      log "Message" "Unziping $zipfile"
       local zipd
       zipd="$TEMP/$zipfile.zipd"
       mkdir -p "$zipd"
       unzip "$TARGET" -d "$zipd"
-      move_to_repo "$zipd"
+      # move_to_repo "$zipd"
+      #   select_type_menu "$TEMP/LIB_TVS4685463.zipd" "$REPO/TVS diode.pretty"
+      # select_type_menu "$zipd"
     done < <(find "$TEMP" \( -type f -name "*.zip" \) -print0)
   fi
 
-  # move_to_repo 'TEMP/component.zipd'
-  # How to use:
-  #   action=move_to_repo_cehck "$REPO/mydir" file_name
+  show_status_table
 }
 
 # ================================================
@@ -710,8 +674,11 @@ done
 # Verify that $TAREGT is not empty!
 if [[ -n "$TARGET" ]]; then
   main
+  cat $LOGF
 fi
+
 # Show the file status table
 # show_status_table
 # Remove the temp directory and its content.
-rm -rf "$TEMP"
+rm -rf $TEMP
+rm -f $LOGF

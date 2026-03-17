@@ -8,7 +8,6 @@ The install script down below shows how to setup the repo connection.
 # How its used
 
 Moving a component from a zip file in to a existing repo:
-[![Watch the video](https://raw.githubusercontent.com/byteofsoren/KiCopy/main/docs/KiCopy_initial_thumbnail.png)](https://raw.githubusercontent.com/byteofsoren/KiCopy/main/docs/KiCopy_initial.mp4)
 
 # Synopis
 

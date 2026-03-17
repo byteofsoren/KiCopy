@@ -5,6 +5,7 @@
 # ================================================
 
 REPO="$HOME/repos/electricdesign_kilib"
+# LOGGING_ENABLED=true
 
 # ================================================
 # Global do not change
@@ -13,7 +14,7 @@ TEMP="/tmp/KiCopy_extract_$$"
 LOGF="/tmp/KiCopy_log_$$.log"
 
 TARGET=""
-CHECKTARGET=False
+# CHECKTARGET=False
 COUNTER=0
 
 # Status table reports after the process is done
@@ -32,9 +33,9 @@ readonly ERROR=1
 readonly ALREADYDONE=4
 # readonly NOTARGET=5
 readonly IGNOREFILE=7
-readonly OVERWRITEFILE=8
+# readonly OVERWRITEFILE=8
 readonly RENAMEDFILE=9
-readonly NOCONFLICTONFILE=0
+# readonly NOCONFLICTONFILE=0
 # ================================================
 # Colors
 # ================================================
@@ -112,7 +113,7 @@ show_status_table() {
 #   add_status_row "2" "THVD151.mod" "TVD1512_b.mod" "Changed"
 # ================================================
 add_status_row() {
-  log "Start" "add_status_row()"
+  log "$LINENO" "Start" "add_status_row()"
   local id="$1"
   local base="$2"
   local target="$3"
@@ -136,21 +137,24 @@ add_status_row() {
 }
 
 # ================================================
-# Log command
+# log "$LINENO" command
 # ================================================
 log() {
   local time
-  time=$(date --utc +%Y%m%d-T%T:%H:%S)
-  local status="$1"
-  local message="$2"
-  printf "[%s][%s] %s\n" "$time" "$status" "$message" >>$LOGF
+  time=$(date --utc +%dT%H:%M:%S)
+  local linenum="$1"
+  local status="$2"
+  local message="$3"
+  if [[ -n "$LOGGING_ENABLED" ]]; then
+    printf "[%s][%s]at(%s) %s\n" "$time" "$status" "$linenum" "$message" >>$LOGF
+  fi
 }
 
 # ================================================
 # Target should only be assigned onec.
 # ================================================
 target_assign_once() {
-  log "Start" "target_assign_once()"
+  log "$LINENO" "Start" "target_assign_once()"
   if [[ -n $TARGET ]]; then
     echo "ALREADYDONE"
     return $ALREADYDONE
@@ -182,15 +186,15 @@ target_assign_once() {
 #   action=$?
 # ================================================
 move_to_repo_cehck() {
-  log "Start" "move_to_repo_cehck()"
+  log "$LINENO" "Start" "move_to_repo_cehck()"
   local target_dir="$1"
   local -n base_filename="$2"
-  log "Message" "$target_dir/$base_filename"
+  log "$LINENO" "Message" "$target_dir/$base_filename"
   local returnval="$OK"
   local orginal_fliename="$base_filename"
   # Does the file exist?!
   if [[ -e "$target_dir/$base_filename" ]]; then
-    log "Message" "the path $target_dir/$base_filename existed start renaming"
+    log "$LINENO" "Message" "the path $target_dir/$base_filename existed start renaming"
     while true; do
       # Yes the target haid an file allready!
       echo -e " ${C_RED}File Exists${NO_FORMAT}"
@@ -264,32 +268,31 @@ move_to_repo_cehck() {
   return "$returnval"
 }
 
+# ================================================
+# Create new pretty library
+# Inputs:
+#   $1 new name for a library
+#
+# ================================================
 create_new_pretty() {
-  log "Start" "create_new_pretty()"
-  newdirname="${REPO}/${1}.pretty"
+  log "$LINENO" "Start" "create_new_pretty()"
+  local libraryname
+  log "$LINENO" "Data" "libraryname=$libraryname"
+
+  libraryname="$REPO/$1.pretty"
   while true; do
-    if [[ -d "$newdirname" ]]; then
-      echo "$newdirname already exists"
-      echo "Change name or Skip C/S"
-      lecal change_or_skip
-      read -n 1 -r change_or_skip
-      case "$change_or_skip" in
-      c | C)
-        read -r newdirname
-        continue
-        ;;
-      s | S)
-        return 2
-        ;;
-      *)
-        continue
-        ;;
-      esac
+    if [[ -z "$libraryname" ]]; then
+      echo "Empty name"
+    elif [[ ! -d "$libraryname" ]]; then
+      # If the library does not exist then create it
+      break
     fi
-    break
-    # read -r newdirname
+    echo "The new library already existed try a other name"
+    read -r -p "Library name: " libraryname
+    libraryname="$REPO/$1.pretty"
   done
-  mkdir -p "$newdirname"
+  log "$LINENO" "Message" "Creating new library named -$libraryname-"
+  mkdir -p "$libraryname"
 }
 
 # ================================================
@@ -302,10 +305,15 @@ create_new_pretty() {
 fzf_side_preview() {
   # fzf passes the FULL original line (with tabs) as $1 when we use {}
   local full="$1"
+  echo "fzf_side_preview test $1"
 
   local type data show
   # local -a files_arr=()
   local fzf_width=${FZF_PREVIEW_COLUMNS:-80}
+
+  if [[ -n "$fzf_sidebar_files" ]]; then
+    echo "No files to target"
+  fi
 
   # echo "Test"
   # Split the line on tabs
@@ -343,6 +351,7 @@ fzf_side_preview() {
     ;;
   esac
 }
+export -f fzf_side_preview
 
 # ================================================
 # Pretty menu
@@ -351,15 +360,25 @@ fzf_side_preview() {
 # "type\tdata\show"
 #  Inputs:
 #    $1 selected string
+#  Example
+#    local myselect=""     # <- Observe the ""
+#    show_menu myselect
 # ================================================
 show_menu() {
-  log "Start" "show_menu()"
-  local -n selected_pretty=$1
+  log "$LINENO" "Start" "show_menu()"
+  # The selected_pretty is the return value C style pointer
+  local result_pretty
   # Get all pretty libraries in REPO
   local -a pretty_menu_array=()
   # Set new and skipp options.
-  # pretty_menu_array+=("$(printf "%b\n" "command\tnew\t${C_GREEN}New library...$NO_FORMAT")")
-  pretty_menu_array+=("$(printf "%b\n" "command\tskipp\t${C_GREEN}Skipp$NO_FORMAT")")
+  shopt -s nullglob
+  pretty_dirs=("$REPO"/*.pretty/)
+  shopt -u nullglob # Optional: reset the option
+  local skip_prompt="command\tskipp\t${C_GREEN}Skipp$NO_FORMAT"
+  if [ ${#pretty_dirs[@]} -eq 0 ]; then
+    pretty_menu_array+=("$(printf "%b\n" "command\tnew\t${C_GREEN}New library...$NO_FORMAT")")
+  fi
+  pretty_menu_array+=("$(printf "%b\n" "$skip_prompt")")
 
   # This lists .pretty files in the repo to where to move the components
   # Example:
@@ -377,7 +396,7 @@ show_menu() {
     pretty_menu_array+=("$(printf "%b\n" "pretty\t$pretty\t${C_TURQUOISE}$dir_name${NO_FORMAT}")")
   done < <(find "$REPO" \( -type d -name "*.pretty" \) -print0)
 
-  selected_pretty=$(
+  result_pretty=$(
     printf "%s\n" "${pretty_menu_array[@]}" |
       fzf --ansi \
         --prompt="Select action: " \
@@ -392,10 +411,14 @@ show_menu() {
   # 1 No match
   # 2 Error
   if [[ $selected_exit_status == 1 ]]; then
-    selected_pretty="newpretty\t$selected_pretty\tnewpretty"
+    result_pretty="newpretty\t$result_pretty\tnewpretty"
   fi
-
-  echo "$selected_pretty remove warning message" >>/dev/null
+  # If the output was nothing then skip file
+  if [[ -z "$result_pretty" ]]; then
+    result_pretty="$skip_prompt"
+  fi
+  log "$LINENO" "Message" "show_menu() result_pretty=$result_pretty selected_exit_status=$selected_exit_status"
+  echo "$result_pretty"
 }
 
 # ================================================
@@ -412,11 +435,11 @@ show_menu() {
 move_to_repo() {
   local file=$1
   local repo_path=$2
-  log "Start" "move_to_repo() file=$file repo_path=$repo_path"
+  log "$LINENO" "Start" "move_to_repo() file=$file repo_path=$repo_path"
   local base_filename
   local move_error
   base_filename=$(basename "$file")
-  log "Filename" "base_filename=$base_filename"
+  log "$LINENO" "Filename" "base_filename=$base_filename"
   move_to_repo_cehck "$REPO/repo_path" base_filename
   move_error=$?
 
@@ -441,7 +464,7 @@ move_to_repo() {
 #   select_type_menu "$TEMP/LIB_TVS4685463.zipd" "$REPO/TVS diode.pretty"
 # ================================================
 select_type_menu() {
-  log "Start" "select_type_menu()"
+  log "$LINENO" "Start" "select_type_menu()"
   local temp_path=$1
   local repo_path=$2
   local what_arr=("All files" "Symbols" "Footprints" "3D files")
@@ -449,22 +472,20 @@ select_type_menu() {
   local all_files=false
   # Sanitace the output
   if [[ ! -d "$repo_path" || ! -d "$temp_path" ]]; then
-    [[ ! -d "$repo_path" ]] && log "ERROR" "Directory: $repo_path did not exist"
-    [[ ! -d "$temp_path" ]] && log "ERROR" "Directory: $temp_path did not exist"
-    echo "Path provided did not exists"
+    log "$LINENO" "Data" "repo_path=$repo_path, temp_path=$temp_path"
+    [[ ! -d "$repo_path" ]] && log "$LINENO" "ERROR" "Directory: $repo_path did not exist"
+    [[ ! -d "$temp_path" ]] && log "$LINENO" "ERROR" "Directory: $temp_path did not exist"
     return "$ERROR"
   fi
   # Select ether one in $what_arr.
   while true; do
     while IFS= read -r -d '' item; do
-      log "Info" "item=$item"
+      log "$LINENO" "Info" "item=$item"
       [[ -n "$item" ]] && selected+=("$item")
       [[ "$item" = "All files" ]] && all_files=true && break
     done < <(printf '%s\0' "${what_arr[@]}" | fzf --multi --read0 --print0 --prompt "Select with [Tab] what to include")
     if ((${#selected[@]})); then
       break
-    else
-      echo "Please select one"
     fi
   done
 
@@ -472,7 +493,7 @@ select_type_menu() {
   if $all_files; then
     # Move all files to repo
     while IFS= read -r -d '' file; do
-      log "File" "while file=$file"
+      log "$LINENO" "File" "while file=$file"
       # file="/tmp/xxxx/LIB_TVS4685463.zipd"
       #   $ move_to_repo "/tmp/xxxx/LIB_TVS4685463.zipd/xxxx.kicadx" "$REPO/TVS/."
       local returnopt
@@ -497,8 +518,6 @@ select_type_menu() {
       # "Symbols" "Footprints" "3D files"
       # First Symbols
       if [[ "$select" == "Symbols" ]]; then
-        echo ""
-        echo "Start footprints..."
         while IFS= read -r -d '' file; do
           local returnopt
           move_to_repo "$file" "$repo_path/."
@@ -545,7 +564,7 @@ select_type_menu() {
 #   in $REPO to where the files are going to be placed
 # ================================================
 select_sublib_in_repo() {
-  log "Start" "select_sublib_in_repo()"
+  log "$LINENO" "Start" "select_sublib_in_repo()"
   local movetarget
   movetarget="$1"
 
@@ -555,34 +574,45 @@ select_sublib_in_repo() {
   mapfile -d '' -t fzf_sidebar_files < <(find "$movetarget" -type f -iregex \
     '.*\.\(kicad_mod\|mod\|kicad_sym\|lib\|dcm\|wrl\|step\|stp\|idf\|stl\|ply\|glb\|brep\|xao\)$' -print0)
   fzf_sidebar_prompt="Files from $movetarget"
+
   # Show menu needs a return value and that is done in selected_pretty
-  local selected_pretty
-  show_menu selected_pretty
+  local result_pretty=" "
+  # show_menu result_pretty
+  result_pretty=$(show_menu)
+  log "$LINENO" "Data" "select_sublib_in_repo() result_pretty=$result_pretty"
   # Store the result from show_menu as type, data and show.
   # The show is what was shown in the menu.
   # Data is the selected or new pretty library.
   # Type is what type of command is selected. ie: newpretty, command, pretty
-  local type data show error
-  IFS=$'\t' read -r type data show <<<"$selected_pretty"
+  local type data show targetpath
+  IFS=$'\t' read -r type data show <<<"$result_pretty"
+  log "$LINENO" "Data" "select_sublib_in_repo() type=$type, data=$data, show=$show"
   if [[ "$type" == "command" && "$data" == "new" ]]; then
-    local newdirname
-    read -r -p "New library name: " newdirname
-    create_new_pretty "$newdirname"
+    log "$LINENO" "Message" "Creating a new library"
+    read -r -p "New library name: " targetpath
+    select_type_menu "$movetarget" "$data"
+    targetpath="$data"
   elif [[ "$type" == "newpretty" && -n "$data" ]]; then
-    echo "Create new pretty library?"
+    log "$LINENO" "Message" "Creating a new library"
     create_new_pretty "$data"
+    targetpath="$data"
   elif [[ "$type" == "command" && "$data" == "skipp" ]]; then
     echo "Skipp this component"
     return
+  elif [[ "$type" == "pretty" && -d "$data" ]]; then
+    targetpath="$data"
   else
     echo "Error"
+    log "$LINENO" "ERROR" "select_sublib_in_repo return from show_menu() type=$type; data=$data"
     return "$ERROR"
   fi
-
+  #   select_type_menu "$TEMP/LIB_TVS4685463.zipd" "$REPO/TVS diode.pretty"
+  log "$LINENO" "Message" "Moving $movetarget to $targetpath"
+  select_type_menu "$movetarget" "$targetpath"
 }
 
 show_help() {
-  log "Start" "show_help()"
+  log "$LINENO" "Start" "show_help()"
   echo -e "$C_TURQUOISE KiCopy $NO_FORMAT"
   echo -e "KiCopy helps with adding symbols and footprints to your repo."
   echo -e "Currently the repo is set to$C_TURQUOISE $REPO$NO_FORMAT"
@@ -604,27 +634,33 @@ show_help() {
   echo -e " $C_LIME\$ kicopy --target ~/tmp/foootprints$NO_FORMAT"
 }
 
+temptest() {
+  echo ""
+}
+
 # ================================================
 # Mani function
 # ================================================
 main() {
-  log "Start" "Main function"
+  log "$LINENO" "Start" "Main function"
   # Move the footprints/symbols to REPO
   if [[ -f "$TARGET" ]]; then
     # unzip file
-    log "Message" "Target is file"
+    log "$LINENO" "Message" "Target is file"
     unzip "$TARGET" -d "$TEMP"
-
+    select_sublib_in_repo $TEMP
+    # select_type_menu "$TEMP/LIB_TVS4685463.zipd" "$REPO/TVS diode.pretty"
   elif [[ -d "$TARGET" ]]; then
     # Unzip a directorie of zip files.
     #
-    log "Message" "Target is a directory"
+    log "$LINENO" "Message" "Target is a directory"
     while IFS= read -r -d '' zipfile; do
-      log "Message" "Unziping $zipfile"
+      log "$LINENO" "Message" "Unziping $zipfile"
       local zipd
       zipd="$TEMP/$zipfile.zipd"
       mkdir -p "$zipd"
       unzip "$TARGET" -d "$zipd"
+      select_sublib_in_repo $zipd
       # move_to_repo "$zipd"
       #   select_type_menu "$TEMP/LIB_TVS4685463.zipd" "$REPO/TVS diode.pretty"
       # select_type_menu "$zipd"
@@ -643,15 +679,15 @@ while true; do
     target_assign_once "$2"
     shift
     ;;
-  -c) CHECKTARGET=True ;;
+  # -c) CHECKTARGET=True ;;
   --target)
     target_assign_once "$2"
     shift
     ;;
-  --check)
-    echo "Enable check"
-    CHECKTARGET=True
-    ;;
+  # --check)
+  #   echo "Enable check"
+  #   CHECKTARGET=True
+  #   ;;
   --help)
     echo "Help start"
     show_help
@@ -672,7 +708,9 @@ done
 # Verify that $TAREGT is not empty!
 if [[ -n "$TARGET" ]]; then
   main
-  cat $LOGF
+  if [[ -f "$LOGF" ]]; then
+    cat $LOGF
+  fi
 fi
 
 # Show the file status table

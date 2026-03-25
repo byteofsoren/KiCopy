@@ -8,7 +8,9 @@ The install script down below shows how to setup the repo connection.
 # How its used
 
 Moving a components, footprints and 3D views from a zip file to a new pretty library:
-[<https://github.com/user-attachments/assets/b07e687e-15fb-4a95-9f48-5a5f89f83118>](https://github.com/user-attachments/assets/b07e687e-15fb-4a95-9f48-5a5f89f83118)
+
+https://github.com/user-attachments/assets/f2bc0f8c-4323-4452-98ae-d219747ffa6e
+
 
 # Synopis
 

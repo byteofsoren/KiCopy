@@ -5,7 +5,7 @@
 # ================================================
 
 REPO="$HOME/repos/electricdesign_kilib"
-LOGGING_ENABLED=true
+# LOGGING_ENABLED=true
 # SAVE_LOG="$HOME/repos/KiCopy/.logfile.txt"
 # ================================================
 # Global do not change
@@ -114,13 +114,12 @@ show_status_table() {
 # ================================================
 add_status_row() {
   log "$LINENO" "Start" "add_status_row()"
-  local id="$1"
-  local base="$2"
-  local target="$3"
+  local base="$1"
+  local target="$2"
   local base_trunk=""
   local target_trunk=""
   local status=""
-  local action="$4"
+  local action="$3"
   if [[ "$action" == "$OK" ]]; then
     status="OK"
   elif [[ "$action" == "$RENAMEDFILE" ]]; then
@@ -133,7 +132,8 @@ add_status_row() {
   base_trunk=$(truncate_filename "$base")
   target_trunk=$(truncate_filename "$target")
 
-  FILE_STATUS_TABLE+=("$(printf "| %5d | %-25s | %-25s | %-10s |\n" "$id" "$base_trunk" "$target_trunk" "$status")")
+  FILE_STATUS_TABLE+=("$(printf "| %5d | %-25s | %-25s | %-10s |\n" "$COUNTER" "$base_trunk" "$target_trunk" "$status")")
+  ((COUNTER++))
 }
 
 # ================================================
@@ -264,7 +264,7 @@ move_to_repo_cehck() {
 
   # Add the row to the output table
   log "$LINENO" "Message" "base_filename=$base_filename, orginal_fliename=$orginal_fliename."
-  add_status_row "$COUNTER" "$base_filename" "$orginal_fliename" "$returnval"
+  add_status_row "$base_filename" "$orginal_fliename" "$returnval"
   # Return with the return val
 
   echo "$base_filename"
@@ -514,7 +514,6 @@ select_type_menu() {
       if [[ "$returnopt" == "$ERROR" ]]; then
         return "$ERROR"
       fi
-      ((COUNTER++))
 
     done < <(find "$temp_path" -type f -iregex \
       '.*\.\(kicad_mod\|mod\|kicad_sym\|lib\|dcm\|wrl\|step\|stp\|idf\|stl\|ply\|glb\|brep\|xao\)$' -print0)
@@ -537,7 +536,6 @@ select_type_menu() {
           if [[ "$returnopt" == "$ERROR" ]]; then
             return "$ERROR"
           fi
-          ((COUNTER++))
         done < <(find "$TEMP" \( -name "*.kicad_sym" -o -name "*.lib" -o -name "*.dcm" \) -print0)
       elif [[ "$select" == "Footprints" ]]; then
         # Then footprints
@@ -548,7 +546,6 @@ select_type_menu() {
           if [[ "$returnopt" == "$ERROR" ]]; then
             return "$ERROR"
           fi
-          ((COUNTER++))
         done < <(find "$TEMP" \( -name "*.kicad_mod" -o -name "*.mod" \) -print0)
       elif [[ "$select" == "3D files" ]]; then
         while IFS= read -r -d '' file; do
@@ -558,7 +555,6 @@ select_type_menu() {
           if [[ "$returnopt" == "$ERROR" ]]; then
             return "$ERROR"
           fi
-          ((COUNTER++))
         done < <(find "$TEMP" \( -iname "*.wrl" -o -iname "*.step" -o -iname "*.stp" -o -iname "*.idf" -o -iname "*.stl" -o -iname "*.ply" -o -iname "*.glb" -o -iname "*.brep" -o -iname "*.xao" \) -print0)
       fi
 
@@ -665,7 +661,7 @@ main() {
   if [[ -f "$TARGET" ]]; then
     # unzip file
     log "$LINENO" "Message" "Target is file"
-    unzip "$TARGET" -d "$TEMP"
+    unzip "$TARGET" -d "$TEMP" >/dev/null
     select_sublib_in_repo $TEMP
 
     # select_type_menu "$TEMP/LIB_TVS4685463.zipd" "$REPO/TVS diode.pretty"
@@ -678,7 +674,7 @@ main() {
       local zipd
       zipd="$TEMP/$zipfile.zipd"
       mkdir -p "$zipd"
-      unzip "$TARGET" -d "$zipd"
+      unzip "$TARGET" -d "$zipd" /dev/null
       select_sublib_in_repo $zipd
       # move_to_repo "$zipd"
       #   select_type_menu "$TEMP/LIB_TVS4685463.zipd" "$REPO/TVS diode.pretty"
